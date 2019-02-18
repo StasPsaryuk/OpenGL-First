@@ -25,11 +25,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 const GLuint WIDTH = 800, HEIGHT = 600;
 
 
-
-
-
-
-
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
@@ -50,56 +45,20 @@ int main()
 
 	// Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
 	glewExperimental = GL_TRUE;
+
 	// Initialize GLEW to setup the OpenGL Function pointers
 	glewInit();
 
 	// Define the viewport dimensions
 	glViewport(0, 0, WIDTH, HEIGHT);
 
+	// Setup OpenGL options
+	glEnable(GL_DEPTH_TEST);
+
+
 	// Build and compile our shader program
-
 	Shader ourShader("C:/Users/stasp/source/repos/OpenGL First/OpenGL First/shader.vs", "C:/Users/stasp/source/repos/OpenGL First/OpenGL First/shader.frag");
-/*/    // Vertex shader
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-	glCompileShader(vertexShader);
-
-	// Check for compile time errors
-	GLint success;
-	GLchar infoLog[512];
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-	}
-	// Fragment shader
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-	glCompileShader(fragmentShader);
-	// Check for compile time errors
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-	}
-
-	// Link shaders
-	GLuint shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
-
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
-
-	glEnable(GL_DEPTH_TEST);
-
-/*/ 
-
-
-	glEnable(GL_DEPTH_TEST);
+ 
 	// Set up vertex data (and buffer(s)) and attribute pointers
 	GLfloat vertices[] = {
 		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -144,6 +103,22 @@ int main()
 		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
 		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 	};
+
+	// World space positions of our cubes
+	glm::vec3 cubePositions[] = {
+		glm::vec3(0.0f,  0.0f,  0.0f),
+		glm::vec3(2.0f,  5.0f, -15.0f),
+		glm::vec3(-1.5f, -2.2f, -2.5f),
+		glm::vec3(-3.8f, -2.0f, -12.3f),
+		glm::vec3(2.4f, -0.4f, -3.5f),
+		glm::vec3(-1.7f,  3.0f, -7.5f),
+		glm::vec3(1.3f, -2.0f, -2.5f),
+		glm::vec3(1.5f,  2.0f, -2.5f),
+		glm::vec3(1.5f,  0.2f, -1.5f),
+		glm::vec3(-1.3f,  1.0f, -1.5f)
+
+	};
+
 	GLuint VBO, VAO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
@@ -157,7 +132,8 @@ int main()
 	// Position attribute
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
-	// texture attribute
+
+	// Texture attribute
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(2);
 
@@ -172,12 +148,14 @@ int main()
 	// ====================
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture); // All upcoming GL_TEXTURE_2D operations now have effect on our texture object
+
 	// Set our texture parameters
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// Set texture wrapping to GL_REPEAT
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	// Set texture filtering
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 	// Load, create texture and generate mipmaps
 	int iwidth, iheight, nrChannel;
 	unsigned char *image = stbi_load("C:/Users/stasp/Documents/OpenGL Stuff/Other/5cc25eabdb6cfbb.jpg", &iwidth, &iheight, &nrChannel, STBI_rgb);
@@ -196,29 +174,9 @@ int main()
 	// Game loop
 	while (!glfwWindowShouldClose(window))
 	{
+		// Clear BUFFER_BIT
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glm::mat4 model;
-		model = glm::rotate(model, -55.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-		glm::mat4 view;
-		view = glm::translate(view, glm::vec3(0.0f, 0.0f, -4.0f));
-		glm::mat4 projection;
-		projection = glm::perspective(45.0f, float(WIDTH) / float(HEIGHT), 0.1f, 100.0f);
-		
-		GLint modelLocm = glGetUniformLocation(ourShader.ID, "model");
-		glUniformMatrix4fv(modelLocm, 1, GL_FALSE, glm::value_ptr(model));
-		GLint modelLocv = glGetUniformLocation(ourShader.ID, "view");
-		glUniformMatrix4fv(modelLocv, 1, GL_FALSE, glm::value_ptr(view));
-		GLint modelLocp = glGetUniformLocation(ourShader.ID, "perspective");
-		glUniformMatrix4fv(modelLocp, 1, GL_FALSE, glm::value_ptr(projection));
-		glm::mat4 trans;
-		trans = glm::rotate(trans, (GLfloat)glfwGetTime() * 100.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-		//trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
-		trans = glm::rotate(trans, (GLfloat)glfwGetTime() * 250.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-		trans = glm::translate(trans, glm::vec3(0.0f, -0.5f, 0.0f));
-		//trans = glm::rotate(trans, 44.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-		GLuint transformLoc = glGetUniformLocation(ourShader.ID, "myMatrix");
-		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 		// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 		glfwPollEvents();
 
@@ -227,32 +185,56 @@ int main()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-
 		// Bind Textures using texture units
-		//glActiveTexture(GL_TEXTURE0);
+		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glUniform1i(glGetUniformLocation(ourShader.ID, "ourTexture"), 0);
 
-
-
 		// Activate shader
 		glUseProgram(ourShader.ID);
-		GLfloat timeValue = glfwGetTime();
-		GLfloat sinus = sin(sin(timeValue*3.0) + 1.0) / 2;
+		//GLfloat timeValue = glfwGetTime();
+		//GLfloat sinus = sin(sin(timeValue*3.0) + 1.0) / 2;
 		glUniform4f(glGetUniformLocation(ourShader.ID, "test"), 1.0f, 1.0f, 1.0f, 1.0f);
 
 
+		// Create transformations
+		glm::mat4 model;
+		model = glm::rotate(model, -55.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+		glm::mat4 view;
+		view = glm::translate(view, glm::vec3(0.0f, 0.0f, -4.0f));
+		glm::mat4 projection;
+		projection = glm::perspective(45.0f, float(WIDTH) / float(HEIGHT), 0.1f, 100.0f);
+		
+		// Get their uniform location
+		GLint modelLocm = glGetUniformLocation(ourShader.ID, "model");
+		glUniformMatrix4fv(modelLocm, 1, GL_FALSE, glm::value_ptr(model));
+		GLint modelLocv = glGetUniformLocation(ourShader.ID, "view");
+		glUniformMatrix4fv(modelLocv, 1, GL_FALSE, glm::value_ptr(view));
+		GLint modelLocp = glGetUniformLocation(ourShader.ID, "perspective");
+		glUniformMatrix4fv(modelLocp, 1, GL_FALSE, glm::value_ptr(projection));
 
 
+		glm::mat4 trans;
+		trans = glm::rotate(trans, (GLfloat)glfwGetTime() * 100.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+		trans = glm::rotate(trans, (GLfloat)glfwGetTime() * 250.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+		trans = glm::translate(trans, glm::vec3(0.0f, -0.5f, 0.0f));
+		GLuint transformLoc = glGetUniformLocation(ourShader.ID, "myMatrix");
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+		
 
-		// Update the uniform color
-
-
-
-		// Draw container
+		
 		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		for (GLuint i = 0; i < 10; i++)
+		{
+			// Calculate the model matrix for each object and pass it to shader before drawing
+			glm::mat4 model;
+			model = glm::translate(model, cubePositions[i]);
+			GLfloat angle = 20.0f * i;
+			model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
+			glUniformMatrix4fv(modelLocm, 1, GL_FALSE, glm::value_ptr(model));
 
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
 		glBindVertexArray(0);
 
 		// Swap the screen buffers
