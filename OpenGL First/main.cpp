@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 
 // GLEW
 #define GLEW_STATIC
@@ -119,6 +120,7 @@ int main()
 
 	};
 
+	
 	GLuint VBO, VAO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
@@ -197,10 +199,18 @@ int main()
 		glUniform4f(glGetUniformLocation(ourShader.ID, "test"), 1.0f, 1.0f, 1.0f, 1.0f);
 
 
+
+		// Camera/View transformation
+		glm::mat4 view;
+		GLfloat radius = 15.0f;
+		GLfloat camX = sin(glfwGetTime()) * radius;
+		GLfloat camZ = cos(glfwGetTime()) * radius;
+		view = glm::lookAt(glm::vec3(camX, 0.0f, camZ), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+
 		// Create transformations
 		glm::mat4 model;
 		model = glm::rotate(model, -55.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-		glm::mat4 view;
 		view = glm::translate(view, glm::vec3(0.0f, 0.0f, -4.0f));
 		glm::mat4 projection;
 		projection = glm::perspective(45.0f, float(WIDTH) / float(HEIGHT), 0.1f, 100.0f);
