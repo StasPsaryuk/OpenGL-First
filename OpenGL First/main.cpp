@@ -1,5 +1,5 @@
-#include <iostream>
-#include <cmath>
+// Std. Includes
+#include <string>
 
 // GLEW
 #define GLEW_STATIC
@@ -8,37 +8,34 @@
 // GLFW
 #include <GLFW/glfw3.h>
 
-// Other Libs
+// GL includes
+#include "Shader.h"
+#include "Camera.h"
+
+// GLM Mathemtics and other libs 
 #define STB_IMAGE_IMPLEMENTATION
 #include <STB/stb_image.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-// Other includes
-#include "Shader.h"
 
+// Properties
+GLuint screenWidth = 800, screenHeight = 600;
 
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void do_movement();
+void Do_Movement();
 
 
-// Window dimensions
-const GLuint WIDTH = 1200, HEIGHT = 800;
 
 // Camera
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-GLfloat yaw = -90.0f;	// Yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right (due to how Eular angles work) so we initially rotate a bit to the left.
-GLfloat pitch = 0.0f;
-GLfloat lastX = WIDTH / 2.0;
-GLfloat lastY = HEIGHT / 2.0;
-GLfloat fov = 45.0f;
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 bool keys[1024];
+GLfloat lastX = 400, lastY = 300;
+bool firstMouse = true;
 
 // Deltatime
 GLfloat deltaTime = 0.0f;	// Время, прошедшее между последним и текущим кадром
@@ -57,9 +54,10 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+	glfwWindowHint(GLFW_SAMPLES, 4);
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "LearnOpenGL", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(screenWidth, screenHeight, "LearnOpenGL", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 
 	// Set the required callback functions
@@ -78,7 +76,7 @@ int main()
 	glewInit();
 
 	// Define the viewport dimensions
-	glViewport(0, 0, WIDTH, HEIGHT);
+	glViewport(0, 0, screenWidth, screenHeight);
 
 	// Setup OpenGL options
 	glEnable(GL_DEPTH_TEST);
@@ -206,7 +204,7 @@ int main()
 		// Clear BUFFER_BIT
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Calculate deltatime of current frame
+		// Set frame time
 		GLfloat currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
@@ -214,7 +212,7 @@ int main()
 
 		// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 		glfwPollEvents();
-		do_movement();
+		Do_Movement();
 
 		
 		// Render
@@ -236,19 +234,18 @@ int main()
 
 
 		
-		// Camera/View transformation
+		// Create camera transformation
 		glm::mat4 view;
-		view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-
+		view = camera.GetViewMatrix();
+		glm::mat4 projection;
+		projection = glm::perspective(camera.Zoom, (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
 		
 
 		// Create transformations
 		glm::mat4 model;
 		model = glm::rotate(model, -55.0f, glm::vec3(1.0f, 1.0f, 1.0f));
 		view = glm::translate(view, glm::vec3(0.0f, 0.0f, -4.0f));
-		glm::mat4 projection;
-		projection = glm::perspective(45.0f, float(WIDTH) / float(HEIGHT), 0.1f, 100.0f);
-		projection = glm::perspective(fov, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
+		
 		
 		// Get their uniform location
 		GLint modelLocm = glGetUniformLocation(ourShader.ID, "model");
@@ -296,6 +293,7 @@ int main()
 // Is called whenever a key is pressed/released via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
+	//cout << key << endl;
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	if (key >= 0 && key < 1024)
@@ -307,21 +305,21 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
-void do_movement()
+// Moves/alters the camera positions based on user input
+void Do_Movement()
 {
 	// Camera controls
-	GLfloat cameraSpeed = 5.0f * deltaTime;
 	if (keys[GLFW_KEY_W])
-		cameraPos += cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(FORWARD, deltaTime);
 	if (keys[GLFW_KEY_S])
-		cameraPos -= cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(BACKWARD, deltaTime);
 	if (keys[GLFW_KEY_A])
-		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(LEFT, deltaTime);
 	if (keys[GLFW_KEY_D])
-		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
-bool firstMouse = true;
+
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
 	if (firstMouse)
@@ -332,36 +330,16 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	}
 
 	GLfloat xoffset = xpos - lastX;
-	GLfloat yoffset = lastY - ypos; // Reversed since y-coordinates go from bottom to left
+	GLfloat yoffset = lastY - ypos;  // Reversed since y-coordinates go from bottom to left
+
 	lastX = xpos;
 	lastY = ypos;
 
-	GLfloat sensitivity = 0.05;	// Change this value to your liking
-	xoffset *= sensitivity;
-	yoffset *= sensitivity;
-
-	yaw += xoffset;
-	pitch += yoffset;
-
-	// Make sure that when pitch is out of bounds, screen doesn't get flipped
-	if (pitch > 89.0f)
-		pitch = 89.0f;
-	if (pitch < -89.0f)
-		pitch = -89.0f;
-
-	glm::vec3 front;
-	front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-	front.y = sin(glm::radians(pitch));
-	front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-	cameraFront = glm::normalize(front);
+	camera.ProcessMouseMovement(xoffset, yoffset);
 }
+
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	if (fov >= 1.0f && fov <= 45.0f)
-		fov -= yoffset;
-	if (fov <= 1.0f)
-		fov = 1.0f;
-	if (fov >= 45.0f)
-		fov = 45.0f;
+	camera.ProcessMouseScroll(yoffset);
 }
